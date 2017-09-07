@@ -2,7 +2,7 @@
 
 ### Cross-Platform Portable Executable C++ Library ###
 
-Compatible with Windows and Linux (tested on MSVC++ 2008, 2010, GCC 4.4 on Linux). Currently tested on little-endian systems only and might not support big-endian ones.
+Compatible with Windows and Linux (tested on MSVC++ 2008, 2010, 2015, 2017, GCC 4.4 on Linux). Currently tested on little-endian systems only and might not support big-endian ones.
 
 Library has many usage samples and is well unit-tested.
 
