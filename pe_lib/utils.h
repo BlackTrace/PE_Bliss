@@ -1,6 +1,7 @@
 #pragma once
 #include <istream>
 #include <string>
+#include <algorithm> //for vs2015 and later
 #include "stdint_defs.h"
 #include "pe_structures.h"
 
