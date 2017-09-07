@@ -10,7 +10,7 @@ using namespace pe_win;
 //IMAGE CONFIG
 //Default constructor
 image_config_info::image_config_info()
-	:time_stamp_(0),
+	:size_(0),time_stamp_(0),
 	major_version_(0), minor_version_(0),
 	global_flags_clear_(0), global_flags_set_(0),
 	critical_section_default_timeout_(0),
@@ -30,7 +30,7 @@ image_config_info::image_config_info()
 //Constructors from PE structures
 template<typename ConfigStructure>
 image_config_info::image_config_info(const ConfigStructure& info)
-	:time_stamp_(info.TimeDateStamp),
+	:size_(info.Size),time_stamp_(info.TimeDateStamp),
 	major_version_(info.MajorVersion), minor_version_(info.MinorVersion),
 	global_flags_clear_(info.GlobalFlagsClear), global_flags_set_(info.GlobalFlagsSet),
 	critical_section_default_timeout_(info.CriticalSectionDefaultTimeout),
@@ -45,11 +45,30 @@ image_config_info::image_config_info(const ConfigStructure& info)
 	security_cookie_va_(info.SecurityCookie),
 	se_handler_table_va_(info.SEHandlerTable),
 	se_handler_count_(info.SEHandlerCount)
-{}
+{
+		GuardCFCheckFunctionPointer_va_ = info.GuardCFCheckFunctionPointer;
+		GuardCFDispatchFunctionPointer_va_ = info.GuardCFDispatchFunctionPointer;
+		GuardCFFunctionTable_va_ = info.GuardCFFunctionTable;
+		GuardCFFunctionCount_ = info.GuardCFFunctionCount;
+		GuardFlags_ = info.GuardFlags;
+		CodeIntegrity_ = info.CodeIntegrity;
+		GuardAddressTakenIatEntryTable_va_ = info.GuardAddressTakenIatEntryTable;
+		GuardAddressTakenIatEntryCount_ = info.GuardAddressTakenIatEntryCount;
+		GuardLongJumpTargetTable_va_ = info.GuardLongJumpTargetTable;
+		GuardLongJumpTargetCount_ = info.GuardLongJumpTargetCount;
+		DynamicValueRelocTable_va_ = info.DynamicValueRelocTable;
+		HybridMetadataPointer_va_ = info.HybridMetadataPointer;
+}
 
 //Instantiate template constructor with needed structures
 template image_config_info::image_config_info(const image_load_config_directory32& info);
 template image_config_info::image_config_info(const image_load_config_directory64& info);
+
+//Returns the Size value
+uint32_t image_config_info::get_size() const
+{
+	return size_;
+}
 
 //Returns the date and time stamp value
 uint32_t image_config_info::get_time_stamp() const
@@ -159,6 +178,68 @@ uint64_t image_config_info::get_se_handler_table_va() const
 uint64_t image_config_info::get_se_handler_count() const
 {
 	return se_handler_count_;
+}
+
+//Returns the pointer of Control Flow Guard Check Function
+uint64_t image_config_info::get_GuardCFCheckFunctionPointer_va() const
+{
+	return GuardCFCheckFunctionPointer_va_;
+}
+
+//Returns the pointer of Control Flow Guard Dispatch Function
+uint64_t image_config_info::get_GuardCFDispatchFunctionPointer_va() const
+{
+	return GuardCFDispatchFunctionPointer_va_;
+}
+//Returns the Control Flow Guard Function Table
+uint64_t image_config_info::get_GuardCFFunctionTable_va() const
+{
+	return GuardCFFunctionTable_va_;
+}
+//Returns the count of the Control Flow Guard Function
+uint64_t image_config_info::get_GuardCFFunctionCount() const
+{
+	return GuardCFFunctionCount_;
+}
+//Returns the GuardFlags
+uint32_t image_config_info::get_GuardFlags() const
+{
+	return GuardFlags_;
+}
+//Returns the Code Integrity
+const image_load_config_code_integrity& image_config_info::get_CodeIntegrity() const
+{
+	return CodeIntegrity_;
+}
+//Returns the GuardAddressTakenIat Entry Table
+uint64_t image_config_info::get_GuardAddressTakenIatEntryTable_va() const
+{
+	return GuardAddressTakenIatEntryTable_va_;
+}
+//Returns the GuardAddressTakenIat Entry Count
+uint64_t image_config_info::get_GuardAddressTakenIatEntryCount() const
+{
+	return GuardAddressTakenIatEntryCount_;
+}
+//Returns the Guard LongJump Target Table
+uint64_t image_config_info::get_GuardLongJumpTargetTable_va() const
+{
+	return GuardLongJumpTargetTable_va_;
+}
+//Returns the Guard LongJump Target Count
+uint64_t image_config_info::get_GuardLongJumpTargetCount() const
+{
+	return GuardLongJumpTargetCount_;
+}
+//Returns the Dynamic Value Reloc Table
+uint64_t image_config_info::get_DynamicValueRelocTable_va() const
+{
+	return DynamicValueRelocTable_va_;
+}
+//Returns the pointer of Hybrid Metadata
+uint64_t image_config_info::get_HybridMetadataPointer_va() const
+{
+	return HybridMetadataPointer_va_;
 }
 
 //Returns SE Handler RVA list
@@ -345,8 +426,8 @@ const image_config_info get_image_config_base(const pe_base& pe)
 	//Get load config structure
 	typename PEClassType::ConfigStruct config_info = pe.section_data_from_rva<typename PEClassType::ConfigStruct>(pe.get_directory_rva(image_directory_entry_load_config), section_data_virtual);
 
-	//Check size of config directory
-	if(config_info.Size != sizeof(config_info))
+	//Check size of config directory, Backward compatibility
+	if(config_info.Size > sizeof(config_info))
 		throw pe_exception("Incorrect (or old) load config directory", pe_exception::incorrect_config_directory);
 
 	//Fill return structure
@@ -425,7 +506,7 @@ const image_directory rebuild_image_config_base(pe_base& pe, const image_config_
 
 	//Create and fill Image Config structure
 	typename PEClassType::ConfigStruct image_config_section_struct = {0};
-	image_config_section_struct.Size = sizeof(image_config_section_struct);
+	image_config_section_struct.Size = info.get_size();
 	image_config_section_struct.TimeDateStamp = info.get_time_stamp();
 	image_config_section_struct.MajorVersion = info.get_major_version();
 	image_config_section_struct.MinorVersion = info.get_minor_version();
@@ -442,7 +523,19 @@ const image_directory rebuild_image_config_base(pe_base& pe, const image_config_
 	image_config_section_struct.EditList = static_cast<typename PEClassType::BaseSize>(info.get_edit_list_va());
 	image_config_section_struct.SecurityCookie = static_cast<typename PEClassType::BaseSize>(info.get_security_cookie_va());
 	image_config_section_struct.SEHandlerCount = static_cast<typename PEClassType::BaseSize>(info.get_se_handler_rvas().size());
-	
+	/* Windows 8 and 8.1 image load configuraton directory has been exanded (to support Control Flow Guard)*/
+	image_config_section_struct.GuardCFCheckFunctionPointer = static_cast<typename PEClassType::BaseSize>(info.get_GuardCFCheckFunctionPointer_va());
+	image_config_section_struct.GuardCFDispatchFunctionPointer = static_cast<typename PEClassType::BaseSize>(info.get_GuardCFDispatchFunctionPointer_va());
+	image_config_section_struct.GuardCFFunctionTable = static_cast<typename PEClassType::BaseSize>(info.get_GuardCFFunctionTable_va());
+	image_config_section_struct.GuardCFFunctionCount = static_cast<typename PEClassType::BaseSize>(info.get_GuardCFFunctionCount());
+	image_config_section_struct.GuardFlags = info.get_GuardFlags();
+	image_config_section_struct.CodeIntegrity = info.get_CodeIntegrity();
+	image_config_section_struct.GuardAddressTakenIatEntryTable = static_cast<typename PEClassType::BaseSize>(info.get_GuardAddressTakenIatEntryTable_va());
+	image_config_section_struct.GuardAddressTakenIatEntryCount = static_cast<typename PEClassType::BaseSize>(info.get_GuardAddressTakenIatEntryCount());
+	image_config_section_struct.GuardLongJumpTargetTable = static_cast<typename PEClassType::BaseSize>(info.get_GuardLongJumpTargetTable_va());
+	image_config_section_struct.GuardLongJumpTargetCount = static_cast<typename PEClassType::BaseSize>(info.get_GuardLongJumpTargetCount());
+	image_config_section_struct.DynamicValueRelocTable = static_cast<typename PEClassType::BaseSize>(info.get_DynamicValueRelocTable_va());
+	image_config_section_struct.HybridMetadataPointer = static_cast<typename PEClassType::BaseSize>(info.get_HybridMetadataPointer_va());
 
 	if(write_se_handlers)
 	{
@@ -483,7 +576,8 @@ const image_directory rebuild_image_config_base(pe_base& pe, const image_config_
 	}
 
 	//Write image config section
-	memcpy(&raw_data[image_config_data_pos], &image_config_section_struct, sizeof(image_config_section_struct));
+	//FIXME: For compatibility with Windows XP and earlier versions of Windows, the size must be 64 for x86 images. 0xA0 for X64. 
+	memcpy(&raw_data[image_config_data_pos], &image_config_section_struct, pe.get_pe_type() == pe_type_32? 64: 0xA0);
 
 	if(write_se_handlers)
 	{
@@ -521,7 +615,8 @@ const image_directory rebuild_image_config_base(pe_base& pe, const image_config_
 	//Adjust section raw and virtual sizes
 	pe.recalculate_section_sizes(image_config_section, auto_strip_last_section);
 
-	image_directory ret(pe.rva_from_section_offset(image_config_section, image_config_data_pos), sizeof(typename PEClassType::ConfigStruct));
+	//FIXME: For compatibility with Windows XP and earlier versions of Windows, the size must be 64 for x86 images. 0xA0 for X64. 
+	image_directory ret(pe.rva_from_section_offset(image_config_section, image_config_data_pos), pe.get_pe_type() == pe_type_32 ? 64 : 0xA0); //sizeof(typename PEClassType::ConfigStruct));
 
 	//If auto-rewrite of PE headers is required
 	if(save_to_pe_header)

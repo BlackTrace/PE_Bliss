@@ -72,8 +72,11 @@ void rebuild_pe(pe_base& pe, image_dos_header& dos_header, bool strip_dos_header
 	for(section_list::iterator it = sections.begin(); it != sections.end(); ++it)
 	{
 		//Save section headers PointerToRawData
+		if((*it).get_size_of_raw_data())
+		{
 		(*it).set_pointer_to_raw_data(static_cast<uint32_t>(ptr_to_section_data));
 		ptr_to_section_data += (*it).get_aligned_raw_size(pe.get_file_alignment());
+		}
 	}
 }
 

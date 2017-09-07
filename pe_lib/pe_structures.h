@@ -352,6 +352,9 @@ struct image_optional_header64
 	image_data_directory DataDirectory[image_numberof_directory_entries];
 };
 
+//
+// File header format.
+//
 struct image_file_header
 {
 	uint16_t Machine;
@@ -399,6 +402,18 @@ struct image_section_header
 
 
 /// RESOURCES ///
+// Resource directory consists of two counts, following by a variable length
+// array of directory entries.  The first count is the number of entries at
+// beginning of the array that have actual names associated with each entry.
+// The entries are in ascending order, case insensitive strings.  The second
+// count is the number of entries that immediately follow the named entries.
+// This second count identifies the number of entries that have 16-bit integer
+// Ids as their name.  These entries are also sorted in ascending order.
+//
+// This structure allows fast lookup by either name or number, but for any
+// given resource entry only one form of lookup is supported, not both.
+// This is consistant with the syntax of the .RC file and the .RES file.
+//
 struct image_resource_directory
 {
 	uint32_t Characteristics;
@@ -461,7 +476,20 @@ struct message_resource_data
 	uint32_t NumberOfBlocks;
 	message_resource_block Blocks[1];
 };
-
+//
+// Each directory contains the 32-bit Name of the entry and an offset,
+// relative to the beginning of the resource directory of the data associated
+// with this directory entry.  If the name of the entry is an actual text
+// string instead of an integer Id, then the high order bit of the name field
+// is set to one and the low order 31-bits are an offset, relative to the
+// beginning of the resource directory of the string, which is of type
+// IMAGE_RESOURCE_DIRECTORY_STRING.  Otherwise the high bit is clear and the
+// low-order 16-bits are the integer Id that identify this resource directory
+// entry. If the directory entry is yet another resource directory (i.e. a
+// subdirectory), then the high order bit of the offset field will be
+// set to indicate this.  Otherwise the high bit is clear and the offset
+// field points to a resource data entry.
+//
 struct image_resource_directory_entry
 {
 	union
@@ -485,7 +513,14 @@ struct image_resource_directory_entry
 		};
 	};
 };
-
+//
+// Each resource data entry describes a leaf node in the resource directory
+// tree.  It contains an offset, relative to the beginning of the resource
+// directory of the data for the resource, a size field that gives the number
+// of bytes of data at that offset, a CodePage that should be used when
+// decoding code point values within the resource data.  Typically for new
+// applications the code page would be the unicode code page.
+//
 struct image_resource_data_entry
 {
 	uint32_t OffsetToData;
@@ -493,6 +528,15 @@ struct image_resource_data_entry
 	uint32_t CodePage;
 	uint32_t Reserved;
 };
+//
+// Code Integrity in loadconfig (CI)
+//
+typedef struct _image_load_config_code_integrity {
+	uint16_t   Flags;          // Flags to indicate if CI information is available, etc.
+	uint16_t   Catalog;        // 0xFFFF means not available
+	uint32_t   CatalogOffset;
+	uint32_t   Reserved;       // Additional bitmask to be defined later
+} image_load_config_code_integrity, *pimage_load_config_code_integrity;
 
 #pragma pack(push, 2)
 struct bitmapfileheader
@@ -966,6 +1010,19 @@ struct image_load_config_directory32
 	uint32_t SecurityCookie;             // VA
 	uint32_t SEHandlerTable;             // VA
 	uint32_t SEHandlerCount;
+	/* Windows 8 and 8.1 image load configuraton directory has been exanded (to support Control Flow Guard), from winnt.h BUILD Version: 0073*/
+	uint32_t   GuardCFCheckFunctionPointer;    // VA
+    uint32_t   GuardCFDispatchFunctionPointer; // VA
+    uint32_t   GuardCFFunctionTable;           // VA
+    uint32_t   GuardCFFunctionCount;
+    uint32_t   GuardFlags;
+    image_load_config_code_integrity CodeIntegrity;
+    uint32_t   GuardAddressTakenIatEntryTable; // VA
+    uint32_t   GuardAddressTakenIatEntryCount;
+    uint32_t   GuardLongJumpTargetTable;       // VA
+    uint32_t   GuardLongJumpTargetCount;
+    uint32_t   DynamicValueRelocTable;         // VA
+    uint32_t   HybridMetadataPointer;
 };
 
 struct image_load_config_directory64
@@ -990,6 +1047,19 @@ struct image_load_config_directory64
 	uint64_t SecurityCookie;          // VA
 	uint64_t SEHandlerTable;          // VA
 	uint64_t SEHandlerCount;
+	/* Windows 8 and 8.1 image load configuraton directory has been exanded (to support Control Flow Guard)*/
+    uint64_t  GuardCFCheckFunctionPointer;    // VA
+    uint64_t  GuardCFDispatchFunctionPointer; // VA
+    uint64_t  GuardCFFunctionTable;           // VA
+    uint64_t  GuardCFFunctionCount;
+    uint32_t  GuardFlags;
+    image_load_config_code_integrity CodeIntegrity;
+    uint64_t  GuardAddressTakenIatEntryTable; // VA
+    uint64_t  GuardAddressTakenIatEntryCount;
+    uint64_t  GuardLongJumpTargetTable;       // VA
+    uint64_t  GuardLongJumpTargetCount;
+    uint64_t  DynamicValueRelocTable;         // VA
+    uint64_t  HybridMetadataPointer;          // VA
 };
 
 #pragma pack(pop)

@@ -6,6 +6,7 @@
 
 namespace pe_bliss
 {
+	using namespace pe_win;
 //Class representing image configuration information
 class image_config_info
 {
@@ -20,6 +21,8 @@ public:
 	template<typename ConfigStructure>
 	explicit image_config_info(const ConfigStructure& info);
 
+	//Returns the Size value
+	uint32_t get_size() const;
 	//Returns the date and time stamp value
 	uint32_t get_time_stamp() const;
 	//Returns major version number
@@ -58,6 +61,30 @@ public:
 	uint64_t get_se_handler_table_va() const;
 	//Returns the count of unique handlers in the table
 	uint64_t get_se_handler_count() const;
+	//Returns the pointer of Control Flow Guard Check Function
+	uint64_t get_GuardCFCheckFunctionPointer_va() const;
+	//Returns the pointer of Control Flow Guard Dispatch Function
+	uint64_t get_GuardCFDispatchFunctionPointer_va() const;
+	//Returns the Control Flow Guard Function Table
+ 	uint64_t get_GuardCFFunctionTable_va() const;
+	//Returns the count of the Control Flow Guard Function
+	uint64_t get_GuardCFFunctionCount() const;
+	//Returns the GuardFlags
+	uint32_t get_GuardFlags() const;
+	//Returns the Code Integrity
+	const image_load_config_code_integrity& get_CodeIntegrity() const;
+	//Returns the GuardAddressTakenIat Entry Table
+	uint64_t get_GuardAddressTakenIatEntryTable_va() const;
+	//Returns the GuardAddressTakenIat Entry Count
+	uint64_t get_GuardAddressTakenIatEntryCount() const;
+	//Returns the Guard LongJump Target Table
+	uint64_t get_GuardLongJumpTargetTable_va() const;
+	//Returns the Guard LongJump Target Count
+	uint64_t get_GuardLongJumpTargetCount() const;
+	//Returns the Dynamic Value Reloc Table
+	uint64_t get_DynamicValueRelocTable_va() const;
+	//Returns the pointer of Hybrid Metadata
+	uint64_t get_HybridMetadataPointer_va() const;
 
 	//Returns SE Handler RVA list
 	const se_handler_list& get_se_handler_rvas() const;
@@ -124,6 +151,7 @@ public: //These functions do not change everything inside image, they are used b
 	lock_prefix_rva_list& get_lock_prefix_rvas();
 
 private:
+	uint32_t size_;
 	uint32_t time_stamp_;
 	uint16_t major_version_, minor_version_;
 	uint32_t global_flags_clear_, global_flags_set_;
@@ -139,6 +167,19 @@ private:
 	uint64_t security_cookie_va_;
 	uint64_t se_handler_table_va_;
 	uint64_t se_handler_count_;
+	/* Windows 8 and 8.1 image load configuraton directory has been exanded (to support Control Flow Guard)*/
+	uint64_t  GuardCFCheckFunctionPointer_va_;    // VA
+	uint64_t  GuardCFDispatchFunctionPointer_va_; // VA
+	uint64_t  GuardCFFunctionTable_va_;           // VA
+	uint64_t  GuardCFFunctionCount_;
+	uint32_t  GuardFlags_;
+	image_load_config_code_integrity CodeIntegrity_;
+	uint64_t  GuardAddressTakenIatEntryTable_va_; // VA
+	uint64_t  GuardAddressTakenIatEntryCount_;
+	uint64_t  GuardLongJumpTargetTable_va_;       // VA
+	uint64_t  GuardLongJumpTargetCount_;
+	uint64_t  DynamicValueRelocTable_va_;         // VA
+	uint64_t  HybridMetadataPointer_va_;          // VA
 
 	se_handler_list se_handlers_;
 	lock_prefix_rva_list lock_prefixes_;
